@@ -46,7 +46,7 @@ GameOfLife::GameOfLife(const std::uint32_t rows, const std::uint32_t columns)
 
 GameOfLife::~GameOfLife() {
   if (multithread) {
-    stop_threads = true;
+    stop_threads.store(true);
     thread_group.join_all();
   }
 }
@@ -112,7 +112,7 @@ void GameOfLife::ProcessCellsThread(std::uint32_t thread_num) {
     start_column = (thread_num * cell_count) % world.GetColumnCount();
   }
 
-  while (!stop_threads) {
+  while (!stop_threads.load()) {
     while ((sem_wait_result = sem_timedwait(
                 &start_cell_process_semaphores[thread_num], &ts)) == -1 &&
            errno == EINTR)
@@ -146,7 +146,7 @@ void GameOfLife::ProcessCellsThread(std::uint32_t thread_num) {
 
     threads_preparation_finished_count++;
 
-    while (threads_preparation_finished_count < threads_count)
+    while (threads_preparation_finished_count.load() < threads_count)
       ;
 
     UpdateWorldWithNewCellStates(new_cell_states);
@@ -155,8 +155,8 @@ void GameOfLife::ProcessCellsThread(std::uint32_t thread_num) {
 }
 
 void GameOfLife::ExecuteNextGenerationMultithreaded() {
-  thread_finished_count = 0;
-  threads_preparation_finished_count = 0;
+  thread_finished_count.store(0);
+  threads_preparation_finished_count.store(0);
   for (std::uint32_t thread_num = 0; thread_num < threads_count; thread_num++) {
     int sem_post_result = sem_post(&start_cell_process_semaphores[thread_num]);
     if (sem_post_result) {
@@ -168,7 +168,7 @@ void GameOfLife::ExecuteNextGenerationMultithreaded() {
     }
   }
 
-  while (thread_finished_count < threads_count)
+  while (thread_finished_count.load() < threads_count)
     ;
 }
 

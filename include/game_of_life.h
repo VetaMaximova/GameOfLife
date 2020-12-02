@@ -86,7 +86,7 @@ private:
   /// @brief count of threads which have already prepared data for calculations
   std::atomic<std::uint32_t> threads_preparation_finished_count;
   /// @brief count of threads which we execute
-  std::atomic<std::uint32_t> threads_count;
+  std::uint32_t threads_count;
 
   /// @brief maximum amount of threads in game
   const std::uint32_t cMaxThreadCount = 3;

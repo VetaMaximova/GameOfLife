@@ -100,4 +100,6 @@ void World::UpdateHash() { hasher.UpdateHash(); }
 
 std::uint32_t World::GetEqualWorldsCount() { return hasher.EqualHashCount(); }
 
-std::uint64_t World::GetAliveCellsCount() const { return alive_cells_count; }
+std::uint64_t World::GetAliveCellsCount() const {
+  return alive_cells_count.load();
+}
