@@ -144,19 +144,32 @@ void GameOfLife::ProcessCellsThread(std::uint32_t thread_num) {
       }
     }
 
-    threads_preparation_finished_count++;
+    {
+      std::lock_guard<std::mutex> lk(conditional_wait_cell_states_mutex);
+      threads_preparation_finished_count++;
+    }
+    conditional_wait_cell_states.notify_all();
 
-    while (threads_preparation_finished_count.load() < threads_count)
-      ;
+    {
+      std::unique_lock<std::mutex> lk(conditional_wait_cell_states_mutex);
+      conditional_wait_cell_states.wait(lk, [this] {
+        return threads_preparation_finished_count >= threads_count;
+      });
+    }
 
     UpdateWorldWithNewCellStates(new_cell_states);
-    thread_finished_count++;
+
+    {
+      std::lock_guard<std::mutex> lk(conditional_wait_cell_processed_mutex);
+      thread_finished_count++;
+    }
+    conditional_wait_cell_processed.notify_all();
   }
 }
 
 void GameOfLife::ExecuteNextGenerationMultithreaded() {
-  thread_finished_count.store(0);
-  threads_preparation_finished_count.store(0);
+  thread_finished_count = 0;
+  threads_preparation_finished_count = 0;
   for (std::uint32_t thread_num = 0; thread_num < threads_count; thread_num++) {
     int sem_post_result = sem_post(&start_cell_process_semaphores[thread_num]);
     if (sem_post_result) {
@@ -168,8 +181,11 @@ void GameOfLife::ExecuteNextGenerationMultithreaded() {
     }
   }
 
-  while (thread_finished_count.load() < threads_count)
-    ;
+  {
+    std::unique_lock<std::mutex> lk(conditional_wait_cell_processed_mutex);
+    conditional_wait_cell_processed.wait(
+        lk, [this] { return thread_finished_count >= threads_count; });
+  }
 }
 
 void GameOfLife::ExecuteNextGenerationSinglehread() {

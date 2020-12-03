@@ -11,6 +11,7 @@
 #include "world.h"
 
 #include <boost/thread.hpp>
+#include <condition_variable>
 #include <mutex>
 #include <semaphore.h>
 
@@ -82,14 +83,22 @@ private:
   /// @brief if true, game is over and threads should be stopped
   std::atomic<bool> stop_threads;
   /// @brief count of threads which have already calculated result
-  std::atomic<std::uint32_t> thread_finished_count;
+  std::uint32_t thread_finished_count;
   /// @brief count of threads which have already prepared data for calculations
-  std::atomic<std::uint32_t> threads_preparation_finished_count;
+  std::uint32_t threads_preparation_finished_count;
   /// @brief count of threads which we execute
   std::uint32_t threads_count;
+  /// @brief conditional wait while cell states are processed
+  std::condition_variable conditional_wait_cell_states;
+  /// @brief mutex for conditional wait while cell states are processed
+  std::mutex conditional_wait_cell_states_mutex;
+  /// @brief conditional wait for finish computations
+  std::condition_variable conditional_wait_cell_processed;
+  /// @brief mutex for conditional wait of finish computations
+  std::mutex conditional_wait_cell_processed_mutex;
 
   /// @brief maximum amount of threads in game
-  const std::uint32_t cMaxThreadCount = 3;
+  const std::uint32_t cMaxThreadCount = 100;
   /// @brief minimum points in game, when we start multithreading
   const std::uint32_t cMinPointsForMultithreading = 40;
 };
